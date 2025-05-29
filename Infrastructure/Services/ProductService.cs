@@ -1,5 +1,6 @@
 using System.Net;
 using Domain.ApiResponse;
+using Domain.DTOs.ProductDTO;
 using Domain.Entities;
 using Infrastructure.Data;
 using Infrastructure.Interfaces;
@@ -9,10 +10,16 @@ namespace Infrastructure.Services;
 
 public class ProductService(DataContext context) : IProductService
 {
-    public async Task<Response<string>> CreateProductAsync(Product product)
+    public async Task<Response<string>> CreateProductAsync(CreateProductDto createProductDto)
     {
-        await context.Products.AddAsync(product);
-        var result = await context.SaveChangesAsync();
+        var product = new Product
+        {
+            Name = createProductDto.Name,
+            Description = createProductDto.Description,
+            Price = createProductDto.Price,
+        };
+        var result = await context.Products.AddAsync(product);
+        await context.SaveChangesAsync();
         if (result == null)
         {
             return new Response<string>("Result is null", HttpStatusCode.NotFound);
@@ -32,43 +39,40 @@ public class ProductService(DataContext context) : IProductService
         return new Response<string>(default, "All Worked");
     }
 
-    public async Task<Response<List<Product>>> GetAllProductAsync()
+    public async Task<Response<List<GetProductDto>>> GetAllProductAsync()
     {
-        var products = await context.Products.ToListAsync();
-        if (products == null)
+        var product = await context.Products
+        .Select(product => new GetProductDto()
         {
-            return new Response<List<Product>>("Products is null", HttpStatusCode.NotFound);
+            Id = product.Id,
+            Name = product.Name,
+            Description = product.Description,
+            Price = product.Price,
+        }).ToListAsync(); 
+
+        if (product == null)
+        {
+            return new Response<List<GetProductDto>>("Customer is null", HttpStatusCode.NotFound);
         }
-        return new Response<List<Product>>(products, "All Worked");
+        return new Response<List<GetProductDto>>(product, "All Worked");
     }
 
-    public async Task<Response<Product>> GetProductWithIdAsync(int Id)
+    public async Task<Response<string>> UpdateProductAsync(Guid Id, UpdateProductDto updateProductDto)
     {
-        var products = await context.Products.FindAsync(Id);
-        if (products == null)
+        var product = await context.Products
+            .Where(p => p.Id == Id)
+            .Select(p => p)
+            .FirstOrDefaultAsync();
+        if (product == null)
         {
-            return new Response<Product>("Products is null", HttpStatusCode.NotFound);
+            return new Response<string>("Customer by this Id not Found", HttpStatusCode.NotFound);
         }
-        return new Response<Product>(products, "All Worked");
-    }
 
-    public async Task<Response<string>> UpdateProductAsync(Product product)
-    {
-        var products = await context.Products.FindAsync(product.Id);
-        if (products == null)
-        {
-            return new Response<string>("Products is null", HttpStatusCode.NotFound);
-        }
-        products.Name = product.Name;
-        products.Description = product.Description;
-        products.Price = product.Price;
+        product.Name = updateProductDto.Name;
+        product.Description = updateProductDto.Description;
+        product.Price = updateProductDto.Price;
 
-        var result = await context.SaveChangesAsync();
-        
-        if (result == null)
-        {
-            return new Response<string>("Result is null", HttpStatusCode.NotFound);
-        }
+        await context.SaveChangesAsync();
         return new Response<string>(default, "All Worked");
     }
 }

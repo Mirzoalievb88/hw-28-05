@@ -1,5 +1,7 @@
+using System.Data.Common;
 using System.Net;
 using Domain.ApiResponse;
+using Domain.DTOs.CustomerDto;
 using Domain.Entities;
 using Infrastructure.Data;
 using Infrastructure.Interfaces;
@@ -9,10 +11,16 @@ namespace Infrastructure.Services;
 
 public class CustomerService(DataContext context) : ICustomerService
 {
-    public async Task<Response<string>> CreateCustomerAsync(Customer customer)
+    public async Task<Response<string>> CreateCustomerAsync(CreateCustomerDto createCustomerDto)
     {
-        await context.Customers.AddAsync(customer);
-        var result = context.SaveChangesAsync(); 
+        var customer = new Customer
+        {
+            Name = createCustomerDto.Name,
+            Email = createCustomerDto.Email,
+            RegisteredOn = createCustomerDto.RegisteredOn,
+        };
+        var result = await context.Customers.AddAsync(customer);
+        await context.SaveChangesAsync();
         if (result == null)
         {
             return new Response<string>("Result is null", HttpStatusCode.NotFound);
@@ -22,53 +30,52 @@ public class CustomerService(DataContext context) : ICustomerService
 
     public async Task<Response<string>> DeleteCustomerWithIdAsync(int Id)
     {
-        var result = await context.Customers.FindAsync(Id);
-        if (result == null)
-        {
-            return new Response<string>("Result is null", HttpStatusCode.NotFound);
-        }
-        context.Customers.Remove(result);
-        await context.SaveChangesAsync();
-        return new Response<string>(default, "All Worked");
-    }
-
-    public async Task<Response<List<Customer>>> GetAllCustomerAsync()
-    {
-        var customer = await context.Customers.ToListAsync();
+        var customer = await context.Customers.FindAsync(Id);
         if (customer == null)
         {
-            return new Response<List<Customer>>("Result is null", HttpStatusCode.NotFound);
+            return new Response<string>("Customer not Found", HttpStatusCode.NotFound);
         }
-        return new Response<List<Customer>>(customer, "All Worked");
+
+        context.Customers.Remove(customer);
+        await context.SaveChangesAsync();
+        return new Response<string>(default, "All Worked");
+
     }
 
-    public async Task<Response<Customer>> GetCustomerWithIdAsync(int Id)
+    public async Task<Response<List<GetCustomerDto>>> GetAllCustomerAsync()
     {
-        var result = await context.Customers.FindAsync(Id);
-        if (result == null)
+        var customer = await context.Customers
+        .Select(customer => new GetCustomerDto()
         {
-            return new Response<Customer>("Result is null", HttpStatusCode.NotFound);
+            Id = customer.Id,
+            Name = customer.Name,
+            Email = customer.Email,
+            RegisteredOn = customer.RegisteredOn,
+        }).ToListAsync(); 
+
+        if (customer == null)
+        {
+            return new Response<List<GetCustomerDto>>("Customer is null", HttpStatusCode.NotFound);
         }
-        return new Response<Customer>(result, "All Worked");
+        return new Response<List<GetCustomerDto>>(customer, "All Worked");
     }
 
-    public async Task<Response<string>> UpdateCustomerAsync(Customer customer)
+    public async Task<Response<string>> UpdateCustomerAsync(Guid Id, UpdateCustomerDto updateCustomerDto)
     {
-        var customers = await context.Customers.FindAsync(customer.Id);
-        if (customers == null)
+        var customer = await context.Customers
+            .Where(c => c.Id == Id)
+            .Select(c => c)
+            .FirstOrDefaultAsync();
+        if (customer == null)
         {
-            return new Response<string>("Result is null", HttpStatusCode.NotFound);
+            return new Response<string>("Customer by this Id not Found", HttpStatusCode.NotFound);
         }
 
-        customers.Name = customer.Name;
-        customers.Email = customer.Email;
-        customers.RegisteredOn = customer.RegisteredOn;
+        customer.Name = updateCustomerDto.Name;
+        customer.Email = updateCustomerDto.Email;
+        customer.RegisteredOn = updateCustomerDto.RegisteredOn;
 
-        var result = await context.SaveChangesAsync();
-        if (result == null)
-        {
-            return new Response<string>("Result is null", HttpStatusCode.NotFound);
-        }
+        await context.SaveChangesAsync();
         return new Response<string>(default, "All Worked");
     }
 }  

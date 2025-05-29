@@ -1,4 +1,5 @@
 using Domain.ApiResponse;
+using Domain.DTOs.CustomerDto;
 using Domain.Entities;
 using Infrastructure.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -11,21 +12,21 @@ namespace WebApi.Controllers;
 public class CustomerController(CustomerService customerService)
 {
     [HttpGet]
-    public async Task<Response<List<Customer>>> GetAllCustomerAsync()
+    public async Task<Response<List<GetCustomerDto>>> GetAllCustomerAsync()
     {
         return await customerService.GetAllCustomerAsync();
     }
 
     [HttpPost]
-    public async Task<Response<string>> CreateCustomerAsync(Customer customer)
+    public async Task<Response<string>> CreateCustomerAsync(CreateCustomerDto createCustomerDto)
     {
-        return await customerService.CreateCustomerAsync(customer);
+        return await customerService.CreateCustomerAsync(createCustomerDto);
     }
 
     [HttpPut]
-    public async Task<Response<string>> UpdateCustomerAsync(Customer customer)
+    public async Task<Response<string>> UpdateCustomerAsync(Guid Id, UpdateCustomerDto updateCustomerDto)
     {
-        return await customerService.UpdateCustomerAsync(customer);
+        return await customerService.UpdateCustomerAsync(Id, updateCustomerDto);
     }
 
     [HttpDelete]
